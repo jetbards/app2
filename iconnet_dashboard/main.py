@@ -47,12 +47,15 @@ class IconnetDashboard:
             
             with col1:
                 # PLN ICONNET Logo placeholder
-                st.markdown("""
-                <div style="text-align: center; background-color: #1a5276; color: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="margin: 0;">PLN ICONNET</h3>
-                    <p style="margin: 0; font-size: 0.8rem;">SEMUA MAKIN MUDAH</p>
-                </div>
-                """, unsafe_allow_html=True)
+                if os.path.exists("LogoPLNIconnet.jpg"):
+                    st.image("LogoPLNIconnet.jpg", width=100)
+                else:
+                    st.markdown("""
+                    <div style="text-align: center; background-color: #1a5276; color: white; padding: 20px; border-radius: 10px;">
+                        <h3 style="margin: 0;">PLN ICONNET</h3>
+                        <p style="margin: 0; font-size: 0.8rem;">SEMUA MAKIN MUDAH</p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
             with col2:
                 st.markdown("""
@@ -64,12 +67,15 @@ class IconnetDashboard:
 
             with col3:
                 # BINUS Logo placeholder
-                st.markdown("""
-                <div style="text-align: center; background-color: #e74c3c; color: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="margin: 0;">BINUS</h3>
-                    <p style="margin: 0; font-size: 0.8rem;">UNIVERSITY</p>
-                </div>
-                """, unsafe_allow_html=True)
+                if os.path.exists("LogoBinus.png"):
+                    st.image("LogoBinus.png", width=100)
+                else:
+                    st.markdown("""
+                    <div style="text-align: center; background-color: #e74c3c; color: white; padding: 20px; border-radius: 10px;">
+                        <h3 style="margin: 0;">BINUS</h3>
+                        <p style="margin: 0; font-size: 0.8rem;">UNIVERSITY</p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
         except Exception as e:
             logger.error(f"Error displaying header: {e}")
@@ -105,7 +111,7 @@ class IconnetDashboard:
         # Data source selection
         data_source = st.sidebar.radio(
             "Select Data Source:",
-            ["Generate Sample Data", "Upload CSV File", "Load Existing File"]
+            ["Upload CSV File", "Load Existing File"]
         )
         
         df = None
