@@ -160,4 +160,4 @@ Dashboard analisis prediktif untuk optimalisasi pendapatan layanan ICONNET di PT
 Untuk pertanyaan teknis atau dukungan, silakan hubungi tim pengembang.
 
 ---
-© 2024 PT PLN ICON PLUS SBU Regional Jawa Tengah
+© 2025 PT PLN ICON PLUS SBU Regional Jawa Tengah
