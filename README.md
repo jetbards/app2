@@ -67,17 +67,6 @@ Dashboard analisis prediktif untuk optimalisasi pendapatan layanan ICONNET di PT
 4. **Access the dashboard:**
    Open your browser and go to `http://localhost:8501`
 
-## 📁 File Structure
-```
-/app/
-├── iconnet_dashboard_fixed.py    # Main dashboard application
-├── requirements_iconnet.txt      # Python dependencies
-├── run_dashboard.sh             # Automated setup script
-├── README_ICONNET.md           # This documentation
-├── LogoPLNIconnet.jpg          # PLN Iconnet logo (optional)
-├── LogoBinus.png               # Binus University logo (optional)
-└── *.pkl                       # Saved ML models
-```
 
 ## 🔧 Technical Details
 
