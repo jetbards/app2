@@ -25,7 +25,7 @@ const Home = () => {
       <header className="App-header">
         <a
           className="App-link"
-          href="https://emergent.sh"
+          href=""
           target="_blank"
           rel="noopener noreferrer"
         >
