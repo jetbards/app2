@@ -130,8 +130,8 @@ class DashboardVisualizations:
         
         # Update x-axis labels for box plots
         for chart_name in ['tenure_vs_churn', 'satisfaction_vs_churn', 'downtime_vs_churn']:
-            charts[chart_name].update_xaxis(tickvals=[0, 1], ticktext=['No Churn', 'Churn'])
-        
+            charts[chart_name].update_xaxes(tickvals=[0, 1], ticktext=['No Churn', 'Churn'])
+            
         return charts
     
     @handle_error

@@ -408,13 +408,83 @@ class ExplainableAI:
             X_sample = X_test.sample(n=sample_size, random_state=42)
             
             shap_values = self.shap_explainer.shap_values(X_sample)
-            
-            # Calculate mean absolute SHAP values
-            mean_shap_values = np.abs(shap_values).mean(axis=0)
-            
+            # Normalize different possible SHAP outputs into a numeric array
+            # shap_values can be:
+            # - a single array (n_samples, n_features)
+            # - a list/tuple of arrays (one per class) each (n_samples, n_features)
+            # - a 3D array with classes/samples/features in various orders
+            try:
+                if isinstance(shap_values, (list, tuple)):
+                    # stack along a new class axis if possible
+                    try:
+                        arr = np.stack([np.asarray(sv) for sv in shap_values], axis=0)
+                    except Exception:
+                        # fallback to simple conversion
+                        arr = np.asarray(shap_values)
+                else:
+                    arr = np.asarray(shap_values)
+            except Exception as e:
+                display_error(f"Error converting SHAP values to array: {e}")
+                return None
+
+            n_features = len(self.feature_names)
+
+            # Compute mean absolute SHAP importance per feature robustly
+            try:
+                if arr.ndim == 3:
+                    # Try to detect which axis corresponds to features
+                    if arr.shape[-1] == n_features:
+                        # features are the last axis -> mean over other axes
+                        mean_shap = np.mean(np.abs(arr), axis=tuple(range(arr.ndim - 1)))
+                    elif arr.shape[1] == n_features:
+                        # features are middle axis
+                        mean_shap = np.mean(np.abs(arr), axis=(0, 2))
+                    elif arr.shape[0] == n_features:
+                        # features are first axis
+                        mean_shap = np.mean(np.abs(arr), axis=(1, 2))
+                    else:
+                        # Flatten to (N, n_features) if possible
+                        try:
+                            arr2 = arr.reshape(-1, n_features)
+                            mean_shap = np.mean(np.abs(arr2), axis=0)
+                        except Exception:
+                            raise ValueError(f"Unrecognized 3D SHAP shape: {arr.shape}")
+
+                elif arr.ndim == 2:
+                    # Most common: (n_samples, n_features)
+                    if arr.shape[1] == n_features:
+                        mean_shap = np.mean(np.abs(arr), axis=0)
+                    elif arr.shape[0] == n_features and arr.shape[1] == 1:
+                        mean_shap = np.mean(np.abs(arr), axis=1)
+                    else:
+                        # Try to coerce to (N, n_features)
+                        try:
+                            arr2 = arr.reshape(-1, n_features)
+                            mean_shap = np.mean(np.abs(arr2), axis=0)
+                        except Exception:
+                            raise ValueError(f"Unrecognized 2D SHAP shape: {arr.shape}")
+
+                elif arr.ndim == 1:
+                    if arr.shape[0] == n_features:
+                        mean_shap = np.abs(arr)
+                    else:
+                        raise ValueError(f"1D SHAP length {arr.shape[0]} != expected features {n_features}")
+
+                else:
+                    # fallback: attempt to ravel and reshape
+                    arr2 = arr.ravel()
+                    if arr2.size % n_features == 0:
+                        arr2 = arr2.reshape(-1, n_features)
+                        mean_shap = np.mean(np.abs(arr2), axis=0)
+                    else:
+                        raise ValueError(f"Unrecognized SHAP array shape: {arr.shape}")
+
+            except Exception as e:
+                display_error(f"Error computing mean SHAP values: {e}")
+                return None
+
             # Create feature importance dictionary
-            feature_importance = dict(zip(self.feature_names, mean_shap_values))
-            
+            feature_importance = dict(zip(self.feature_names, mean_shap.tolist()))
             return feature_importance
             
         except Exception as e:

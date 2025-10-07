@@ -84,24 +84,24 @@ class IconnetDashboard:
     def display_team_info(self):
         """Display team information"""
         st.markdown("""
-        <div class="team-info">
-            <h3 style="text-align: center; margin: 10px 0;">PT PLN ICON PLUS SBU REGIONAL JAWA TENGAH</h3>
-            <h5 style="text-align: center; color: #1f77b4;">Dibuat Oleh:</h5>
-            <div style="display: flex; justify-content: space-around; flex-wrap: wrap;">
-                <div style="text-align: center; margin: 10px;">
-                    <p style="font-weight: bold; margin: 0; color: #2c3e50;">Hani Setiawan</p>
-                    <p style="margin: 0; color: #7f8c8d;">2702464202</p>
-                </div>
-                <div style="text-align: center; margin: 10px;">
-                    <p style="font-weight: bold; margin: 0; color: #2c3e50;">Jetbar Runggu Hamonangan Doloksaribu</p>
-                    <p style="margin: 0; color: #7f8c8d;">2702462973</p>
-                </div>
-                <div style="text-align: center; margin: 10px;">
-                    <p style="font-weight: bold; margin: 0; color: #2c3e50;">Naufal Yafi</p>
-                    <p style="margin: 0; color: #7f8c8d;">2702476240</p>
-                </div>
-            </div>
-        </div>
+        <div class="team-info" style="background-color: #f8f9fa; padding: 8px; border-radius: 5px; margin: 5px 0;">
+			<p style="text-align: center; margin: 2px 0; font-size: 1.2rem; font-weight: bold;">PT PLN ICON PLUS SBU REGIONAL JAWA TENGAH</p>
+			<p style="text-align: center; color: #1f77b4; margin: 1px 0; font-size: 0.75rem;">Dibuat Oleh:</p>
+			<div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 2px;">
+				<div style="text-align: center;">
+					<p style="font-weight: bold; margin: 0; color: #2c3e50; font-size: 0.75rem;">Hani Setiawan</p>
+					<p style="margin: 0; color: #7f8c8d; font-size: 0.65rem;">2702464202</p>
+				</div>
+				<div style="text-align: center;">
+					<p style="font-weight: bold; margin: 0; color: #2c3e50; font-size: 0.75rem;">Jetbar R. H. D.</p>
+					<p style="margin: 0; color: #7f8c8d; font-size: 0.65rem;">2702462973</p>
+				</div>
+				<div style="text-align: center;">
+					<p style="font-weight: bold; margin: 0; color: #2c3e50; font-size: 0.75rem;">Naufal Yafi</p>
+					<p style="margin: 0; color: #7f8c8d; font-size: 0.65rem;">2702476240</p>
+				</div>
+			</div>
+		</div>
         """, unsafe_allow_html=True)
 
     def load_data_section(self):
@@ -650,28 +650,131 @@ class IconnetDashboard:
                     if st.button("🔍 Explain with SHAP"):
                         with st.spinner("Generating SHAP explanation..."):
                             shap_values = explainer.explain_instance_shap(instance_idx, X_test)
-                            
-                            if shap_values is not None:
-                                st.success("SHAP explanation generated!")
-                                
-                                # Create SHAP explanation DataFrame
-                                shap_df = pd.DataFrame({
-                                    'Feature': churn_model.feature_names,
-                                    'SHAP_Value': shap_values[0]
-                                })
-                                shap_df = shap_df.sort_values('SHAP_Value', key=abs, ascending=False)
-                                
-                                # Display as bar chart
-                                fig = px.bar(
-                                    shap_df.head(10),
-                                    x='SHAP_Value',
-                                    y='Feature',
-                                    orientation='h',
-                                    title='SHAP Feature Importance',
-                                    color='SHAP_Value',
-                                    color_continuous_scale='RdBu'
-                                )
-                                st.plotly_chart(fig, use_container_width=True)
+
+                            # Defensive handling: SHAP libraries may return nested arrays or objects
+                            try:
+                                import plotly.express as px
+                                import numpy as _np
+
+                                def _normalize_shap_values(sv, instance_idx, feature_names):
+                                    """Return (arr, info) where arr is 1-D numpy array or None and info is diagnostic string."""
+                                    try:
+                                        # Unwrap shap.Explanation-like objects
+                                        if hasattr(sv, 'values'):
+                                            v = _np.asarray(sv.values)
+                                        elif isinstance(sv, (list, tuple)):
+                                            # Often shap returns a list per class: pick positive class (index 1) if exists
+                                            if len(sv) > 1:
+                                                candidate = sv[1]
+                                            else:
+                                                candidate = sv[0]
+                                            if hasattr(candidate, 'values'):
+                                                v = _np.asarray(candidate.values)
+                                            else:
+                                                v = _np.asarray(candidate)
+                                        else:
+                                            v = _np.asarray(sv)
+                                    except Exception as e:
+                                        return None, f"extract_error:{e}"
+
+                                    if v is None:
+                                        return None, "no_data"
+
+                                    # Normalize numpy array
+                                    v = _np.asarray(v)
+                                    shape = v.shape
+
+                                    # 1-D: already good
+                                    if v.ndim == 1:
+                                        return v.reshape(-1), f"shape:{shape}"
+
+                                    # 2-D: many common formats
+                                    if v.ndim == 2:
+                                        # If columns match features, treat rows as instances
+                                        if v.shape[1] == len(feature_names):
+                                            # If there are multiple rows, pick instance row
+                                            if v.shape[0] > instance_idx:
+                                                return v[instance_idx].reshape(-1), f"shape:{shape},selected_row"
+                                            # If only one row, use it
+                                            if v.shape[0] == 1:
+                                                return v[0].reshape(-1), f"shape:{shape},single_row"
+                                        # If rows match features (transposed), ravel
+                                        if v.shape[0] == len(feature_names) and v.shape[1] == 1:
+                                            return v.ravel(), f"shape:{shape},column_vector"
+                                        # If rows equal number of classes, pick class 1 if possible
+                                        if v.shape[0] > 1 and v.shape[0] != len(feature_names):
+                                            sel = 1 if v.shape[0] > 1 else 0
+                                            row = v[sel]
+                                            if row.shape[0] == len(feature_names):
+                                                return row.reshape(-1), f"shape:{shape},selected_class_row"
+                                        # Fallback: try to ravel
+                                        return v.ravel(), f"shape:{shape},ravel_fallback"
+
+                                    # 3-D: e.g., (classes, samples, features) or (samples, classes, features)
+                                    if v.ndim == 3:
+                                        # Some SHAP variants return (1, n_features, n_classes) or (n_samples, n_features, n_classes)
+                                        # Normalize to (samples, features, classes) possibilities and pick class index 1
+                                        # Case: (1, n_features, n_classes)
+                                        if v.shape[0] == 1 and v.shape[1] == len(feature_names):
+                                            # v[0] is (n_features, n_classes) -> transpose to (n_classes, n_features)
+                                            tmp = v[0].T  # shape (n_classes, n_features)
+                                            sel_class = 1 if tmp.shape[0] > 1 else 0
+                                            row = tmp[sel_class]
+                                            return row.reshape(-1), f"shape:{shape},1xf_features->class{sel_class}"
+
+                                        # Case: (n_samples, n_features, n_classes)
+                                        if v.shape[0] > 1 and v.shape[1] == len(feature_names):
+                                            # pick instance row and preferred class
+                                            sample = v[instance_idx]
+                                            # sample shape (n_features, n_classes) -> transpose
+                                            if sample.ndim == 2:
+                                                tmp = sample.T  # (n_classes, n_features)
+                                                sel_class = 1 if tmp.shape[0] > 1 else 0
+                                                return tmp[sel_class].reshape(-1), f"shape:{shape},sample_class_features_class{sel_class}"
+
+                                        # Case: (n_classes, n_samples, n_features)
+                                        if v.shape[2] == len(feature_names) and v.shape[0] > 1 and v.shape[1] > instance_idx:
+                                            sel = 1 if v.shape[0] > 1 else 0
+                                            return v[sel, instance_idx].reshape(-1), f"shape:{shape},class_sample_features"
+
+                                        # fallback: ravel
+                                        return v.ravel(), f"shape:{shape},ravel3"
+
+                                    # other: ravel as last resort
+                                    return v.ravel(), f"shape:{shape},ravel_default"
+
+                                feature_names = getattr(churn_model, 'feature_names', None) or list(X_test.columns)
+                                arr, info = _normalize_shap_values(shap_values, instance_idx, feature_names)
+
+                                if arr is None:
+                                    st.error(f"Unable to parse SHAP values into a 1-D array. Diagnostic: {info}. Returned type: {type(shap_values)}")
+                                else:
+                                    if arr.shape[0] != len(feature_names):
+                                        st.error(f"SHAP values length ({arr.shape[0]}) does not match number of features ({len(feature_names)}). Diagnostic: {info}")
+                                    else:
+                                        st.success("SHAP explanation generated!")
+
+                                        # Create SHAP explanation DataFrame
+                                        shap_df = pd.DataFrame({
+                                            'Feature': feature_names,
+                                            'SHAP_Value': arr
+                                        })
+                                        shap_df = shap_df.sort_values('SHAP_Value', key=abs, ascending=False)
+
+                                        # Display as bar chart
+                                        fig = px.bar(
+                                            shap_df.head(10),
+                                            x='SHAP_Value',
+                                            y='Feature',
+                                            orientation='h',
+                                            title='SHAP Feature Importance',
+                                            color='SHAP_Value',
+                                            color_continuous_scale='RdBu'
+                                        )
+                                        st.plotly_chart(fig, use_container_width=True)
+
+                            except Exception as e:
+                                st.error(f"Error processing SHAP values: {e}")
             
             # Global explanation
             st.subheader("🌍 Global Feature Importance")
@@ -679,27 +782,58 @@ class IconnetDashboard:
             if st.button("📊 Calculate Global Importance"):
                 with st.spinner("Calculating global feature importance..."):
                     global_importance = explainer.get_global_feature_importance(X_test)
-                    
-                    if global_importance:
-                        # Display global importance
-                        importance_df = pd.DataFrame(
-                            list(global_importance.items()),
-                            columns=['Feature', 'Importance']
-                        ).sort_values('Importance', ascending=False)
-                        
-                        fig = px.bar(
-                            importance_df.head(15),
-                            x='Importance',
-                            y='Feature',
-                            orientation='h',
-                            title='Global Feature Importance (SHAP)',
-                            color='Importance',
-                            color_continuous_scale='Viridis'
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        # Display as table
-                        st.dataframe(importance_df, use_container_width=True)
+                    try:
+                        import plotly.express as px
+                        import numpy as _np
+
+                        if global_importance is None:
+                            st.error("No global feature importance returned.")
+                        else:
+                            feature_names = getattr(churn_model, 'feature_names', None) or list(X_test.columns)
+
+                            # If dict, use directly
+                            if isinstance(global_importance, dict):
+                                items = list(global_importance.items())
+                            else:
+                                # Try to coerce array-like to 1-D importance vector
+                                arr = _np.asarray(global_importance)
+
+                                if arr.size == len(feature_names):
+                                    flat = arr.reshape(-1)
+                                elif arr.ndim >= 2 and arr.shape[-1] == len(feature_names):
+                                    # take last axis as features, then if multiple entries take mean across others
+                                    try:
+                                        flat = arr.reshape(-1, arr.shape[-1]).mean(axis=0)
+                                    except Exception:
+                                        flat = None
+                                else:
+                                    flat = None
+
+                                if flat is None:
+                                    st.error(f"Global importance has incompatible shape {arr.shape} for {len(feature_names)} features.")
+                                    items = []
+                                else:
+                                    items = list(zip(feature_names, flat.tolist()))
+
+                            if len(items) > 0:
+                                importance_df = pd.DataFrame(items, columns=['Feature', 'Importance']).sort_values('Importance', ascending=False)
+
+                                fig = px.bar(
+                                    importance_df.head(15),
+                                    x='Importance',
+                                    y='Feature',
+                                    orientation='h',
+                                    title='Global Feature Importance (SHAP)',
+                                    color='Importance',
+                                    color_continuous_scale='Viridis'
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+
+                                # Display as table
+                                st.dataframe(importance_df, use_container_width=True)
+
+                    except Exception as e:
+                        st.error(f"Error calculating global importance: {e}")
 
     def strategic_recommendations_section(self, df):
         """Display strategic recommendations section"""
@@ -1017,7 +1151,7 @@ class IconnetDashboard:
     def run(self):
         """Run the main dashboard"""
         # Display header and intro
-        self.display_header()
+        # self.display_header()
         self.display_team_info()
         
         # Main title
