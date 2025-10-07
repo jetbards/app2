@@ -55,13 +55,13 @@ Dashboard analisis prediktif untuk optimalisasi pendapatan layanan ICONNET di PT
 
 2. **Run the dashboard:**
    ```bash
-   streamlit run iconnet_dashboard_fixed.py
+   streamlit run iconnet_dashboard/main.py.py
    ```
 
 3. **Or use the automated script:**
    ```bash
-   chmod +x run_dashboard.sh
-   ./run_dashboard.sh
+   chmod +x iconnet_dashboard/run_dashboard.sh
+   ./iconnet_dashboard/run_dashboard.sh
    ```
 
 4. **Access the dashboard:**
